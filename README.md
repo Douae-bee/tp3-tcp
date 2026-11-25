@@ -6,7 +6,7 @@
 
 
 
-This project was developed as part of the Networking course at ENSEA. The main objective is to implement a TCP client/server application in Java, explore TCP communication and understand the differences between TCP and UDP.
+ The main objective of this Lab was to implement a TCP client/server application in Java, explore TCP communication and understand the differences between TCP and UDP.
 
 
 
