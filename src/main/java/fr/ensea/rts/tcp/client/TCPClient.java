@@ -1,3 +1,5 @@
+package fr.ensea.rts.tcp.client;
+
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

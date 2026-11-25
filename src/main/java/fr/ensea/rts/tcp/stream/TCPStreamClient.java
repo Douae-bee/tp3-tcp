@@ -1,3 +1,5 @@
+package fr.ensea.rts.tcp.stream;
+
 
 import java.io.OutputStream;
 import java.io.IOException;
