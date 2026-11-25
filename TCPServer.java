@@ -8,15 +8,24 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 
 /**
- * TCP echo server with message history.
+ * TCP echo server with message history and client identification.
  */
 public class TCPServer {
 
     private final int port;
     private boolean running;
     private final MessageHistory history;
+
+    // Step 14: Client identification
+    private int clientCounter = 0;
+
+    private static final DateTimeFormatter DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * Creates a server on the specified port.
@@ -30,7 +39,7 @@ public class TCPServer {
     }
 
     /**
-     * Creates a server on port 8080.
+     * Creates a server on the default port.
      */
     public TCPServer() {
         this(8080);
@@ -44,21 +53,23 @@ public class TCPServer {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
 
             running = true;
-
             System.out.println("TCP Server started on port " + port);
 
             while (true) {
 
                 Socket clientSocket = serverSocket.accept();
 
+                // Assign a unique ID to each client
+                int clientId = ++clientCounter;
+
                 try (Socket socket = clientSocket) {
 
-                    handleClient(socket);
+                    handleClient(socket, clientId);
 
                 } catch (IOException e) {
 
-                    System.out.println("Error handling client: "
-                            + e.getMessage());
+                    System.out.println("Error handling Client #"
+                            + clientId + ": " + e.getMessage());
                 }
             }
 
@@ -72,51 +83,75 @@ public class TCPServer {
     }
 
     /**
-     * Handles communication with one client.
+     * Handles communication with a connected client.
      *
-     * @param socket client connection
+     * @param socket client socket
+     * @param clientId unique client identifier
+     * @throws IOException if a communication error occurs
      */
-    private void handleClient(Socket socket) throws IOException {
+    private void handleClient(Socket socket, int clientId)
+            throws IOException {
 
-        System.out.println("Client connected: "
+        // Step 14: Record the connection time
+        LocalDateTime connectionTime = LocalDateTime.now();
+        long startTime = System.nanoTime();
+
+        System.out.println("[" + connectionTime.format(DATE_FORMAT)
+                + "] Client #" + clientId + " connected: "
                 + socket.getInetAddress());
 
-        BufferedReader in = new BufferedReader(
-                new InputStreamReader(
-                        socket.getInputStream(),
-                        StandardCharsets.UTF_8));
+        try {
 
-        PrintWriter out = new PrintWriter(
-                new OutputStreamWriter(
-                        socket.getOutputStream(),
-                        StandardCharsets.UTF_8),
-                true);
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(
+                            socket.getInputStream(),
+                            StandardCharsets.UTF_8));
 
-        // Send the history to the new client
-        sendHistory(out);
+            PrintWriter out = new PrintWriter(
+                    new OutputStreamWriter(
+                            socket.getOutputStream(),
+                            StandardCharsets.UTF_8),
+                    true);
 
-        String message;
+            // Step 13: Send previous messages
+            sendHistory(out);
 
-        while ((message = in.readLine()) != null) {
+            String message;
 
-            System.out.println("Received: " + message);
+            while ((message = in.readLine()) != null) {
 
-            String response = socket.getInetAddress()
-                    + ": " + message;
+                System.out.println("Received from Client #"
+                        + clientId + ": " + message);
 
-            // Store the received message
-            history.addMessage(response);
+                String response = socket.getInetAddress()
+                        + ": " + message;
 
-            // Send the echo
-            out.println(response);
+                history.addMessage(response);
+
+                out.println(response);
+            }
+
+        } finally {
+
+            // Step 14: Record the disconnection time
+            LocalDateTime disconnectionTime = LocalDateTime.now();
+
+            Duration sessionDuration = Duration.ofNanos(
+                    System.nanoTime() - startTime);
+
+            System.out.println("["
+                    + disconnectionTime.format(DATE_FORMAT)
+                    + "] Client #" + clientId + " disconnected.");
+
+            System.out.printf(
+                    "Client #%d session duration: %.2f seconds%n",
+                    clientId,
+                    sessionDuration.toNanos() / 1_000_000_000.0);
         }
-
-        System.out.println("Client disconnected: "
-                + socket.getInetAddress());
     }
 
     /**
-     * Sends the stored messages to a new client.
+     * Sends the message history to a new client.
      *
      * @param out client output stream
      */
@@ -137,6 +172,11 @@ public class TCPServer {
                 + ", running=" + running + "]";
     }
 
+    /**
+     * Starts the server using command-line arguments.
+     *
+     * @param args optional server port
+     */
     public static void main(String[] args) {
 
         int port = 8080;
