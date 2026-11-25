@@ -114,11 +114,3 @@ All previous versions and implementation steps can be found in the \[Git commit 
 
 The detailed explanations, experiments, screenshots and answers are available in the \[Lab Report](docs/Report.pdf).
 
-
-
-\## Conclusion
-
-
-
-This lab helped us understand TCP communication, socket programming and the differences between TCP and UDP. It also improved our Java programming and teamwork skills using Git and GitHub.
-
