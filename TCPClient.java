@@ -8,7 +8,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 /**
- * TCP client that exchanges text messages with a TCP server.
+ * TCP client with message history reception.
  */
 public class TCPClient {
 
@@ -35,30 +35,29 @@ public class TCPClient {
 
             System.out.println("Connected to " + host + ":" + port);
 
-            // Read messages from the server
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(
                             socket.getInputStream(),
                             StandardCharsets.UTF_8));
 
-            // Send messages to the server
             PrintWriter out = new PrintWriter(
                     new OutputStreamWriter(
                             socket.getOutputStream(),
                             StandardCharsets.UTF_8),
                     true);
 
-            // Read user input from the keyboard
             BufferedReader keyboard = new BufferedReader(
                     new InputStreamReader(
                             System.in,
                             StandardCharsets.UTF_8));
 
+            // Receive the message history
+            receiveHistory(in);
+
             String message;
 
             System.out.println("Enter a message or /quit to exit.");
 
-            // Exchange messages until the user quits
             while ((message = keyboard.readLine()) != null) {
 
                 if (message.equals("/quit")) {
@@ -85,7 +84,43 @@ public class TCPClient {
     }
 
     /**
-     * Starts the TCP client using command-line arguments.
+     * Receives the history sent by the server.
+     *
+     * @param in server input stream
+     */
+    private void receiveHistory(BufferedReader in)
+            throws IOException {
+
+        String header = in.readLine();
+
+        if (header == null || !header.matches("HISTORY (10|[0-9])")) {
+            throw new IOException("Invalid or missing history header.");
+        }
+
+        int count = Integer.parseInt(header.substring(8));
+
+        System.out.println("--- Message history ---");
+
+        if (count == 0) {
+            System.out.println("No previous messages.");
+        }
+
+        for (int i = 0; i < count; i++) {
+
+            String message = in.readLine();
+
+            if (message == null) {
+                throw new IOException("Incomplete message history.");
+            }
+
+            System.out.println(message);
+        }
+
+        System.out.println("--- End of history ---");
+    }
+
+    /**
+     * Starts the TCP client.
      *
      * @param args server host and port
      */

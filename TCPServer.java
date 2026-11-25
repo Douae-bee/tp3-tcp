@@ -7,24 +7,38 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
+/**
+ * TCP echo server with message history.
+ */
 public class TCPServer {
 
     private final int port;
     private boolean running;
+    private final MessageHistory history;
 
-    // Constructor with a specified port
+    /**
+     * Creates a server on the specified port.
+     *
+     * @param port listening port
+     */
     public TCPServer(int port) {
         this.port = port;
         this.running = false;
+        this.history = new MessageHistory();
     }
 
-    // Default constructor
+    /**
+     * Creates a server on port 8080.
+     */
     public TCPServer() {
         this(8080);
     }
 
-    // Launch the TCP server
+    /**
+     * Starts the TCP server.
+     */
     public void launch() {
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
@@ -33,44 +47,13 @@ public class TCPServer {
 
             System.out.println("TCP Server started on port " + port);
 
-            // Wait for clients continuously
             while (true) {
 
                 Socket clientSocket = serverSocket.accept();
 
                 try (Socket socket = clientSocket) {
 
-                    System.out.println("Client connected: "
-                            + socket.getInetAddress());
-
-                    // Get input and output streams
-                    BufferedReader in = new BufferedReader(
-                            new InputStreamReader(
-                                    socket.getInputStream(),
-                                    StandardCharsets.UTF_8));
-
-                    PrintWriter out = new PrintWriter(
-                            new OutputStreamWriter(
-                                    socket.getOutputStream(),
-                                    StandardCharsets.UTF_8),
-                            true);
-
-                    String message;
-
-                    // Read messages until the client disconnects
-                    while ((message = in.readLine()) != null) {
-
-                        System.out.println("Received: " + message);
-
-                        String response = socket.getInetAddress()
-                                + ": " + message;
-
-                        out.println(response);
-                        out.flush();
-                    }
-
-                    System.out.println("Client disconnected: "
-                            + socket.getInetAddress());
+                    handleClient(socket);
 
                 } catch (IOException e) {
 
@@ -85,6 +68,66 @@ public class TCPServer {
 
         } finally {
             running = false;
+        }
+    }
+
+    /**
+     * Handles communication with one client.
+     *
+     * @param socket client connection
+     */
+    private void handleClient(Socket socket) throws IOException {
+
+        System.out.println("Client connected: "
+                + socket.getInetAddress());
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(
+                        socket.getInputStream(),
+                        StandardCharsets.UTF_8));
+
+        PrintWriter out = new PrintWriter(
+                new OutputStreamWriter(
+                        socket.getOutputStream(),
+                        StandardCharsets.UTF_8),
+                true);
+
+        // Send the history to the new client
+        sendHistory(out);
+
+        String message;
+
+        while ((message = in.readLine()) != null) {
+
+            System.out.println("Received: " + message);
+
+            String response = socket.getInetAddress()
+                    + ": " + message;
+
+            // Store the received message
+            history.addMessage(response);
+
+            // Send the echo
+            out.println(response);
+        }
+
+        System.out.println("Client disconnected: "
+                + socket.getInetAddress());
+    }
+
+    /**
+     * Sends the stored messages to a new client.
+     *
+     * @param out client output stream
+     */
+    private void sendHistory(PrintWriter out) {
+
+        List<String> messages = history.getMessages();
+
+        out.println("HISTORY " + messages.size());
+
+        for (String message : messages) {
+            out.println(message);
         }
     }
 
